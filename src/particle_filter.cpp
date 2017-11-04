@@ -53,7 +53,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 		part.theta = dist_theta(gen);
 		particles.push_back(part);
 
-		//cout << "Sample" << " " << part.x  << " " << part.y  << " " << part.theta  << endl;
+		//cout << "Initial state x" << " " << part.x  << " y " << part.y  << " theta " << part.theta  << endl;
 
 	}
 
@@ -74,8 +74,12 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	for (int i=0; i <num_particles; i++)
 	{
 		if (fabs(yaw_rate)<0.00001){
+			/*
 			particles[i].x = particles[i].x + velocity/yaw_rate*(sin(particles[i].theta + yaw_rate*delta_t) - sin(particles[i].theta));
 			particles[i].y = particles[i].y + velocity/yaw_rate*(-cos(particles[i].theta + yaw_rate*delta_t) + cos(particles[i].theta));
+			*/
+			particles[i].x = particles[i].x + velocity*cos(particles[i].theta)*delta_t;
+			particles[i].y = particles[i].y + velocity*sin(particles[i].theta)*delta_t;
 		}
 		else {
 			particles[i].x = particles[i].x + velocity/yaw_rate*(sin(particles[i].theta + yaw_rate*delta_t) - sin(particles[i].theta));
@@ -87,6 +91,16 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 		particles[i].x += Noise_x(gen);
 		particles[i].y += Noise_y(gen);
 		particles[i].theta += Noise_theta(gen);
+
+		/*if (yaw_rate != 0) {
+			particles[i].x = particles[i].x + velocity/yaw_rate*(sin(particles[i].theta + yaw_rate*delta_t) - sin(particles[i].theta));
+			particles[i].y = particles[i].y + velocity/yaw_rate*(cos(particles[i].theta) - cos(particles[i].theta + yaw_rate*delta_t));
+			particles[i].theta = particles[i].theta + yaw_rate*delta_t;
+		  } else {
+			particles[i].x = particles[i].x + velocity*cos(particles[i].theta)*delta_t;
+			particles[i].y = particles[i].y + velocity*sin(particles[i].theta)*delta_t;
+			// particle.theta = particle.theta
+		  }*/
 	}
 }
 
@@ -106,6 +120,8 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 				if(distance < min_distance){
 					min_distance = distance;
 					observation.id = p.id;
+
+					//cout << "La prediccion " << p.id << " ha sido asociada a " << observation.id << endl;
 				}
 			}
 	} 
@@ -145,6 +161,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 			transformed_ob.x = particle.x + (cos(particle.theta) * observations[j].x) - (sin(particle.theta)* observations[j].y);
 			transformed_ob.y = particle.y + (sin(particle.theta) * observations[j].x) + (cos(particle.theta)* observations[j].y);
 			
+			//cout <<"La transform en x es " << transformed_ob.x << " en y es" << transformed_ob.y  << endl;
+
 			transformed_obs[j] = transformed_ob;
 		}
 
@@ -178,6 +196,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		gauss_norm = (1/(2 * M_PI * std_landmark[0] * std_landmark[1]));
 		exponent = (pow(observation.x - idx2landmark[observation.id].x_f, 2))/(2 * pow(std_landmark[0],2)) + (pow(observation.y - idx2landmark[observation.id].y_f, 2))/(2 * pow(std_landmark[1], 2));
 		particle.weight *= gauss_norm * exp(-exponent); 
+		//cout << "The landmarks are: " << idx2landmark[observation.id].x_f << endl;
 		//cout << particle.weight << endl;
 	}
 	//Segmentation fault weights[i] = particle.weight;
@@ -199,7 +218,7 @@ void ParticleFilter::resample() {
 	// TODO: Resample particles with replacement with probability proportional to their weight. 
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
-	
+
 	
 	default_random_engine gen;
 	discrete_distribution<int> dist_p(weights.begin(), weights.end()); //como enumerar las particulas
@@ -224,6 +243,7 @@ void ParticleFilter::resample() {
 	weights.resize(0);
 	particles = new_particles;
 	
+	
 }
 
 Particle ParticleFilter::SetAssociations(Particle particle, std::vector<int> associations, std::vector<double> sense_x, std::vector<double> sense_y)
@@ -234,6 +254,7 @@ Particle ParticleFilter::SetAssociations(Particle particle, std::vector<int> ass
 	// sense_y: the associations y mapping already converted to world coordinates
 
 	//Clear the previous associations
+	
 	particle.associations.clear();
 	particle.sense_x.clear();
 	particle.sense_y.clear();
@@ -242,7 +263,8 @@ Particle ParticleFilter::SetAssociations(Particle particle, std::vector<int> ass
  	particle.sense_x = sense_x;
  	particle.sense_y = sense_y;
 
- 	return particle;
+	 return particle;
+	 
 }
 
 string ParticleFilter::getAssociations(Particle best)
